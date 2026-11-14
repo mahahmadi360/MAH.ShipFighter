@@ -1,4 +1,6 @@
-import {Component,ChangeDetectorRef} from '@angular/core';
+import {SwUpdate,provideServiceWorker} from '@angular/service-worker';
+import {Subscription} from 'rxjs';
+import {Component,ChangeDetectorRef,isDevMode} from '@angular/core';
 import {ShotIcon} from './shot-icon';
 import {HitSound} from './hit-sound';
 import {bootstrapApplication} from '@angular/platform-browser';
@@ -6,7 +8,7 @@ import {version as appVersion} from '../package.json';
 import {cells,fleet,valid,shoot,randomFleet,Ship,Player} from './engine';
 @Component({selector:'app-root',standalone:true,imports:[ShotIcon],template:`
 <div class="app" [class.red]="active===1">
-<header><a class="brand" href="./">SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">{{version}}</small></a><div class="header-actions"><button class="sound-toggle" (click)="sound.toggle()" [attr.aria-label]="sound.enabled?'Mute sound':'Enable sound'" [attr.aria-pressed]="sound.enabled" [attr.data-audio-status]="sound.status" [title]="sound.error||(sound.enabled?'Sound on':'Sound off')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/>@if(sound.enabled){<path d="M16 8c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/>}@else{<path d="m17 9 5 6m0-6-5 6"/>}</svg></button><button class="reset" (click)="restart=true">↻ New Game</button></div></header>
+<header><a class="brand" href="./">SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">{{version}}</small></a><div class="header-actions">@if(updateAvailable){<button class="sound-toggle" aria-label="Load latest version" title="Update available" (click)="loadUpdate()">↻</button>}@if(installPrompt){<button class="sound-toggle" aria-label="Install Ship Fighter" title="Install app" (click)="installApp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button>}<button class="sound-toggle" (click)="sound.toggle()" [attr.aria-label]="sound.enabled?'Mute sound':'Enable sound'" [attr.aria-pressed]="sound.enabled" [attr.data-audio-status]="sound.status" [title]="sound.error||(sound.enabled?'Sound on':'Sound off')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/>@if(sound.enabled){<path d="M16 8c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/>}@else{<path d="m17 9 5 6m0-6-5 6"/>}</svg></button><button class="reset" aria-label="New Game" title="New Game" (click)="restart=true">↻ <span class="reset-label">New Game</span></button></div></header>
 <main (pointerdown)="sound.unlock()" [class.battle]="phase!=='setup'" [attr.inert]="handoff||restart||winnerOpen?'':null">
 @for(p of (phase==='setup'?[active]:[0,1]);track p){
 <section class="playfield" [class.player-two]="p===1" [class.current]="p===active" [class.passive]="p!==active" [style.grid-row]="phase==='setup'?1:p===0?1:3" [attr.aria-label]="'Player '+(p+1)">
@@ -30,12 +32,22 @@ import {cells,fleet,valid,shoot,randomFleet,Ship,Player} from './engine';
 </div>`})
 export class App {
  version=appVersion;
+ installPrompt:(Event & {prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null=null;
+ updateAvailable=false;
+ private updateSubscription?:Subscription;
+ private onInstall=(event:Event)=>{event.preventDefault();this.installPrompt=event as NonNullable<typeof this.installPrompt>;this.cd.markForCheck();};
+ private onInstalled=()=>{this.installPrompt=null;this.cd.markForCheck();};
+ installApp(){const prompt=this.installPrompt;if(!prompt)return;this.installPrompt=null;void prompt.prompt().then(()=>prompt.userChoice).catch(()=>{}).finally(()=>this.cd.markForCheck());}
+ loadUpdate(){window.location.reload();}
  letters='ABCDEFGHIJ'.split('');numbers=Array.from({length:10},(_,i)=>i);grid=Array.from({length:100},(_,i)=>i);
  players:Player[]=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];active=0;phase:'setup'|'battle'|'finished'='setup';handoff=false;restart=false;winnerOpen=false;selected:number|null=null;selectedShip:number|null=null;result='';notice='';ghost:number[]=[];ghostValid=true;
  lastShot:{player:number;cell:number}|null=null;
  sound=new HitSound(()=>this.cd.markForCheck());
  drag:{id:number;x:number;y:number;offset:number;moved:boolean;tray:boolean;target:number|null}|null=null;suppress=false;
- constructor(private cd:ChangeDetectorRef){try{const saved=localStorage.getItem('ship-fighter-v1');if(saved){const s=JSON.parse(saved);if([1,2].includes(s.version)&&this.validSave(s)){this.players=s.players;this.active=s.active;this.phase=s.phase;this.handoff=this.phase==='setup';this.winnerOpen=this.phase==='finished';if(s.version===1&&this.phase==='battle'&&s.result){this.active=1-this.active;this.save();}}}}catch{localStorage.removeItem('ship-fighter-v1');}}
+ constructor(private cd:ChangeDetectorRef,updates:SwUpdate){
+ window.addEventListener('beforeinstallprompt',this.onInstall);window.addEventListener('appinstalled',this.onInstalled);
+ if(updates.isEnabled){this.updateSubscription=updates.versionUpdates.subscribe(event=>{if(event.type==='VERSION_READY'){this.updateAvailable=true;this.cd.markForCheck();}});void updates.checkForUpdate().catch(()=>{});}
+ try{const saved=localStorage.getItem('ship-fighter-v1');if(saved){const s=JSON.parse(saved);if([1,2].includes(s.version)&&this.validSave(s)){this.players=s.players;this.active=s.active;this.phase=s.phase;this.handoff=this.phase==='setup';this.winnerOpen=this.phase==='finished';if(s.version===1&&this.phase==='battle'&&s.result){this.active=1-this.active;this.save();}}}}catch{localStorage.removeItem('ship-fighter-v1');}}
  validSave(s:any){return [0,1].includes(s.active)&&['setup','battle','finished'].includes(s.phase)&&Array.isArray(s.players)&&s.players.length===2&&s.players.every((p:any)=>Array.isArray(p.ships)&&p.ships.length===5&&p.ships.every((ship:Ship,i:number)=>ship.id===i&&ship.size===[5,4,3,3,2][i]&&Number.isInteger(ship.row)&&Number.isInteger(ship.col)&&typeof ship.vertical==='boolean'&&valid(ship,p.ships))&&p.shots&&typeof p.shots==='object'&&!Array.isArray(p.shots)&&Object.entries(p.shots).every(([k,v])=>Number.isInteger(+k)&&+k>=0&&+k<100&&typeof v==='boolean'));}
  save(){try{localStorage.setItem('ship-fighter-v1',JSON.stringify({version:2,players:this.players,active:this.active,phase:this.phase}));}catch{this.notice='Browser storage is unavailable. Keep this tab open to finish the game.';}}
  coordinate(c:number){return this.letters[c%10]+(Math.floor(c/10)+1);}
@@ -60,7 +72,7 @@ export class App {
   if(r.won){this.phase='finished';this.winnerOpen=true;}else this.active=1-player;
   this.save();
  }
- ngOnDestroy(){this.sound.close();}
+ ngOnDestroy(){this.sound.close();this.updateSubscription?.unsubscribe();window.removeEventListener('beforeinstallprompt',this.onInstall);window.removeEventListener('appinstalled',this.onInstalled);}
  newGame(){this.lastShot=null;this.players=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];this.active=0;this.phase='setup';this.handoff=true;this.restart=false;this.winnerOpen=false;this.selected=null;this.selectedShip=null;this.result='';this.notice='';this.cancelDrag();this.save();}
 }
-bootstrapApplication(App).catch(console.error);
+bootstrapApplication(App,{providers:[provideServiceWorker('ngsw-worker.js',{enabled:!isDevMode(),registrationStrategy:'registerImmediately'})]}).catch(console.error);

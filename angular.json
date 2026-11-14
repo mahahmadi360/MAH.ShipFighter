@@ -18,20 +18,38 @@
             "outputPath": {
               "base": "dist",
               "browser": ""
-            }
+            },
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public",
+                "output": "/"
+              }
+            ]
           },
           "configurations": {
             "production": {
               "optimization": true,
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "serviceWorker": "ngsw-config.json"
+            },
+            "development": {
+              "optimization": false,
+              "sourceMap": true
             }
-          }
+          },
+          "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "buildTarget": "ship-fighter:build",
+            "buildTarget": "ship-fighter:build:development",
             "allowedHosts": true
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "ship-fighter:build:production"
+            }
           }
         }
       }

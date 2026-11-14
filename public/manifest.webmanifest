@@ -1,0 +1,18 @@
+{
+  "id": "./",
+  "name": "Ship Fighter",
+  "short_name": "Ship Fighter",
+  "description": "Two-player naval battles on one device.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101e2e",
+  "theme_color": "#172e46",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {"src":"icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ]
+}
