@@ -1,22 +1,29 @@
-/** Quiet procedural audio; no asset downloads or background playback. */
+/** Bundled explosion sample, preloaded and played directly from a user gesture. */
 export class HitSound {
- private context:AudioContext|null=null;
+ private voices:HTMLAudioElement[]=[];
+ private nextVoice=0;
+ constructor(){
+  try{
+   const url=new URL('audio/explosion-1.2.1.mp3',document.baseURI).href;
+   this.voices=Array.from({length:4},()=>{
+    const audio=new Audio(url);
+    audio.preload='auto';
+    audio.volume=.55;
+    audio.load();
+    return audio;
+   });
+  }catch{/* Audio is optional; gameplay stays available. */}
+ }
  play(){
   try{
-   const ctx=this.context??=new AudioContext();
-   if(ctx.state==='closed')return;
-   if(ctx.state==='suspended')void ctx.resume().catch(()=>{});
-   const now=ctx.currentTime,duration=.32;
-   const buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);
-   const data=buffer.getChannelData(0);
-   for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
-   const noise=ctx.createBufferSource();noise.buffer=buffer;
-   const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.setValueAtTime(700,now);filter.frequency.exponentialRampToValueAtTime(90,now+duration);
-   const gain=ctx.createGain();gain.gain.setValueAtTime(.001,now);gain.gain.linearRampToValueAtTime(.12,now+.008);gain.gain.exponentialRampToValueAtTime(.001,now+duration);
-   noise.connect(filter).connect(gain).connect(ctx.destination);noise.start(now);noise.stop(now+duration);
-   const bass=ctx.createOscillator(),bassGain=ctx.createGain();bass.type='sine';bass.frequency.setValueAtTime(105,now);bass.frequency.exponentialRampToValueAtTime(40,now+.26);bassGain.gain.setValueAtTime(.065,now);bassGain.gain.exponentialRampToValueAtTime(.001,now+.28);bass.connect(bassGain).connect(ctx.destination);bass.start(now);bass.stop(now+.3);
-   noise.onended=()=>{noise.disconnect();filter.disconnect();gain.disconnect();};bass.onended=()=>{bass.disconnect();bassGain.disconnect();};
-  }catch{/* Audio must never interrupt the game. */}
+   const voice=this.voices[this.nextVoice++%this.voices.length];
+   if(!voice)return;
+   voice.pause();voice.currentTime=0;
+   void voice.play().catch(()=>{});
+  }catch{/* A blocked or unavailable audio device must not interrupt a turn. */}
  }
- close(){if(this.context)void this.context.close().catch(()=>{});this.context=null;}
+ close(){
+  for(const voice of this.voices){voice.pause();voice.removeAttribute('src');voice.load();}
+  this.voices=[];
+ }
 }
