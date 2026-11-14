@@ -28,7 +28,7 @@ Each player has **five ships**, covering **17 cells** altogether:
 | Submarine | 3 cells |
 | Destroyer | 2 cells |
 
-Drag a ship to move it. Tap it to rotate it 90°. Ships can touch, but they cannot overlap or extend outside the grid. The shuffle button gives you a random arrangement.
+Drag a ship to move it. Tap it to rotate it 90° through all four directions. During setup, ships may overlap or extend outside the grid, as long as at least one cell stays inside so you can drag them back. Conflicting ships are highlighted and **Confirm fleet** stays disabled until every ship is entirely inside the grid with no overlaps. The shuffle button gives you a random arrangement.
 
 ### 2. Take turns firing
 
