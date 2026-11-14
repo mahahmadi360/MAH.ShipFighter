@@ -4,7 +4,7 @@ import {version as appVersion} from '../package.json';
 import {cells,fleet,valid,shoot,randomFleet,Ship,Player} from './engine';
 @Component({selector:'app-root',standalone:true,template:`
 <div class="app" [class.red]="active===1">
-<header><a class="brand" href="./"><span class="brand-icon">⌁</span> SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">v{{version}}</small></a><span class="header-note">LOCAL MULTIPLAYER <i></i></span><button class="reset" (click)="restart=true">↻ <span>New game</span></button></header>
+<header><a class="brand" href="./"><span class="brand-icon">⌁</span> SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">{{version}}</small></a><span class="header-note">LOCAL MULTIPLAYER <i></i></span><button class="reset" (click)="restart=true">↻ <span>New game</span></button></header>
 <main>
 <div class="eyebrow">NAVAL COMMAND / {{phase==='setup'?'FLEET DEPLOYMENT':'BATTLE STATIONS'}}</div>
 <div class="title-row"><div><h1>{{phase==='setup'?'A good battle starts here.':phase==='finished'?'The ocean has a winner.':'Make your next move.'}}</h1><p>{{phase==='setup'?'Position your fleet. Protect your waters.':'Choose your target. Every coordinate counts.'}}</p></div><div class="turn-badge"><i></i> PLAYER {{active+1}} <span>{{phase==='setup'?'DEPLOYING':'ON DECK'}}</span></div></div>
