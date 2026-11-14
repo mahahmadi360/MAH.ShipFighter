@@ -23,7 +23,7 @@ State is saved to localStorage. Reloading restores behind a privacy screen. This
 
 ## GitHub Pages
 
-The included `deployment/github-pages.yml` is a ready-to-use GitHub Actions workflow template. To enable automatic deployment, copy it to `.github/workflows/pages.yml` using credentials with Workflows write permission, then in GitHub Settings → Pages select **GitHub Actions** as the source. It builds, tests, and deploys pushes to main/master. The repository name is automatically used as the base href.
+The included `.github/workflows/pages.yml` builds, tests, and deploys pushes to main/master. In GitHub Settings → Pages, select **GitHub Actions** as the source. The repository name is automatically used as the base href.
 
 ## Structure
 
