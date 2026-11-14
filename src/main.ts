@@ -35,6 +35,10 @@ export class App {
  installPrompt:(Event & {prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null=null;
  updateAvailable=false;
  private updateSubscription?:Subscription;
+ private syncViewport=()=>{
+  const height=Math.max(1,Math.floor(Math.min(window.innerHeight,window.visualViewport?.height??window.innerHeight)));
+  document.documentElement.style.setProperty('--app-height',height+'px');
+ };
  private onInstall=(event:Event)=>{event.preventDefault();this.installPrompt=event as NonNullable<typeof this.installPrompt>;this.cd.markForCheck();};
  private onInstalled=()=>{this.installPrompt=null;this.cd.markForCheck();};
  installApp(){const prompt=this.installPrompt;if(!prompt)return;this.installPrompt=null;void prompt.prompt().then(()=>prompt.userChoice).catch(()=>{}).finally(()=>this.cd.markForCheck());}
@@ -45,6 +49,7 @@ export class App {
  sound=new HitSound(()=>this.cd.markForCheck());
  drag:{id:number;x:number;y:number;offset:number;moved:boolean;candidate:Ship|null}|null=null;suppress=false;
  constructor(private cd:ChangeDetectorRef,updates:SwUpdate){
+ this.syncViewport();window.addEventListener('resize',this.syncViewport);window.visualViewport?.addEventListener('resize',this.syncViewport);
  window.addEventListener('beforeinstallprompt',this.onInstall);window.addEventListener('appinstalled',this.onInstalled);
  if(updates.isEnabled){this.updateSubscription=updates.versionUpdates.subscribe(event=>{if(event.type==='VERSION_READY'){this.updateAvailable=true;this.cd.markForCheck();}});void updates.checkForUpdate().catch(()=>{});}
  try{const saved=localStorage.getItem('ship-fighter-v1');if(saved){const s=JSON.parse(saved);if([1,2,3].includes(s.version)&&this.validSave(s)){this.players=s.players.map((p:Player)=>({...p,ships:p.ships.map(ship=>({...ship,direction:heading(ship)}))}));this.active=s.active;this.phase=s.phase;this.handoff=this.phase==='setup';this.winnerOpen=this.phase==='finished';if(s.version===1&&this.phase==='battle'&&s.result){this.active=1-this.active;this.save();}}}}catch{localStorage.removeItem('ship-fighter-v1');}}
@@ -95,7 +100,7 @@ export class App {
   if(r.won){this.phase='finished';this.winnerOpen=true;}else this.active=1-player;
   this.save();
  }
- ngOnDestroy(){this.sound.close();this.updateSubscription?.unsubscribe();window.removeEventListener('beforeinstallprompt',this.onInstall);window.removeEventListener('appinstalled',this.onInstalled);}
+ ngOnDestroy(){window.removeEventListener('resize',this.syncViewport);window.visualViewport?.removeEventListener('resize',this.syncViewport);this.sound.close();this.updateSubscription?.unsubscribe();window.removeEventListener('beforeinstallprompt',this.onInstall);window.removeEventListener('appinstalled',this.onInstalled);}
  newGame(){this.lastShot=null;this.players=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];this.active=0;this.phase='setup';this.handoff=true;this.restart=false;this.winnerOpen=false;this.selected=null;this.selectedShip=null;this.result='';this.notice='';this.cancelDrag();this.save();}
 }
 bootstrapApplication(App,{providers:[provideServiceWorker('ngsw-worker.js',{enabled:!isDevMode(),registrationStrategy:'registerImmediately'})]}).catch(console.error);
