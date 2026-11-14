@@ -15,9 +15,9 @@ Open http://localhost:4200. `npm test` runs the game engine tests; `npm run buil
 
 ## Rules
 
-Each player has a 10×10 ocean and five ships of lengths **5, 4, 3, 3, 2** (17 cells). Drag ships on the board or from the fleet list. Tap a placed ship to rotate around its first cell. Alternatively select a ship from the list, then tap an empty cell to move it. Invalid moves leave the previous position unchanged; ships may touch but cannot overlap or leave the grid.
+Each player has a 10×10 ocean and five ships of lengths **5, 4, 3, 3, 2** (17 cells). Drag ships on the board. Tap a placed ship to rotate around its first cell. Alternatively tap a ship to select/rotate it, then tap an empty cell to move it. Invalid moves leave the previous position unchanged; ships may touch but cannot overlap or leave the grid.
 
-Player 1 locks their fleet, passes the device behind a privacy screen, then Player 2 deploys. During battle, select a target and press **Confirm shot** (or cancel). Red means hit, white means miss. Both hits and misses end the turn. Review the result, then pass to the next player behind the handoff screen. Miniature boards show only shot histories, never hidden ships. The first player to hit all 17 opposing ship cells wins. A new game requires confirmation.
+Player 1 locks their fleet, passes the device behind a privacy screen, then Player 2 deploys. During battle, select a target and press **Confirm shot** (or cancel). Red means hit, white means miss. Both hits and misses end the turn. The result stays visible for two seconds, then the game automatically opens the next player’s handoff screen. Miniature boards show only shot histories, never hidden ships. The first player to hit all 17 opposing ship cells wins. A new game requires confirmation.
 
 State is saved to localStorage. Reloading restores behind a privacy screen. This is casual shared-device privacy, not protection from browser developer tools. No backend, accounts, network multiplayer, or game API is used. Optional Google Fonts fall back to local fonts if offline. Static assets must have been loaded before playing without a connection; a service worker is not included.
 
