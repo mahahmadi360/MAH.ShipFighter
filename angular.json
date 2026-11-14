@@ -18,14 +18,7 @@
             "outputPath": {
               "base": "dist",
               "browser": ""
-            },
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public",
-                "output": "/"
-              }
-            ]
+            }
           },
           "configurations": {
             "production": {

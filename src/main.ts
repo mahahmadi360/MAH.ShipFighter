@@ -6,8 +6,8 @@ import {version as appVersion} from '../package.json';
 import {cells,fleet,valid,shoot,randomFleet,Ship,Player} from './engine';
 @Component({selector:'app-root',standalone:true,imports:[ShotIcon],template:`
 <div class="app" [class.red]="active===1">
-<header><a class="brand" href="./">SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">{{version}}</small></a><button class="reset" (click)="restart=true">↻ New Game</button></header>
-<main [class.battle]="phase!=='setup'" [attr.inert]="handoff||restart||winnerOpen?'':null">
+<header><a class="brand" href="./">SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">{{version}}</small></a><div class="header-actions"><button class="sound-toggle" (click)="sound.toggle()" [attr.aria-label]="sound.enabled?'Mute sound':'Enable sound'" [attr.aria-pressed]="sound.enabled" [attr.data-audio-status]="sound.status" [title]="sound.error||(sound.enabled?'Sound on':'Sound off')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/>@if(sound.enabled){<path d="M16 8c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/>}@else{<path d="m17 9 5 6m0-6-5 6"/>}</svg></button><button class="reset" (click)="restart=true">↻ New Game</button></div></header>
+<main (pointerdown)="sound.unlock()" [class.battle]="phase!=='setup'" [attr.inert]="handoff||restart||winnerOpen?'':null">
 @for(p of (phase==='setup'?[active]:[0,1]);track p){
 <section class="playfield" [class.player-two]="p===1" [class.current]="p===active" [class.passive]="p!==active" [style.grid-row]="phase==='setup'?1:p===0?1:3" [attr.aria-label]="'Player '+(p+1)">
 <div class="board" role="group" [attr.aria-label]="'Player '+(p+1)+(phase==='setup'?' fleet placement':' targeting grid')" (pointermove)="move($event)" (pointerup)="endDrag($event)" (pointercancel)="cancelDrag()">
@@ -21,7 +21,7 @@ import {cells,fleet,valid,shoot,randomFleet,Ship,Player} from './engine';
 @else{<button class="primary" [disabled]="selected===null||phase==='finished'" (click)="fire()">{{phase==='finished'?'Player '+(active+1)+' wins!':'Confirm shot'}}</button>}
 </div>
 <div class="legend"><span><i class="legend-ship"></i>{{phase==='setup'?'Ship':'Uncharted'}}</span><span><shot-icon kind="hit"/>Hit</span><span><shot-icon kind="miss"/>Miss</span></div>
-<span class="sr-only" aria-live="polite">{{result}}</span>
+<span class="sr-only" aria-live="polite">{{result}}</span>@if(sound.error){<div class="audio-error" role="status">{{sound.error}}</div>}
 @if(notice&&phase==='setup'){<div class="notice" role="status" (click)="notice=''">{{notice}}</div>}
 </main>
 @if(handoff){<div class="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="handoff-title"><h2 id="handoff-title">Player {{active+1}}</h2><button class="primary" (click)="reveal()">{{phase==='setup'?'Place ships':'Ready to fire'}}</button></section></div>}
@@ -33,7 +33,7 @@ export class App {
  letters='ABCDEFGHIJ'.split('');numbers=Array.from({length:10},(_,i)=>i);grid=Array.from({length:100},(_,i)=>i);
  players:Player[]=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];active=0;phase:'setup'|'battle'|'finished'='setup';handoff=false;restart=false;winnerOpen=false;selected:number|null=null;selectedShip:number|null=null;result='';notice='';ghost:number[]=[];ghostValid=true;
  lastShot:{player:number;cell:number}|null=null;
- sound=new HitSound();
+ sound=new HitSound(()=>this.cd.markForCheck());
  drag:{id:number;x:number;y:number;offset:number;moved:boolean;tray:boolean;target:number|null}|null=null;suppress=false;
  constructor(private cd:ChangeDetectorRef){try{const saved=localStorage.getItem('ship-fighter-v1');if(saved){const s=JSON.parse(saved);if([1,2].includes(s.version)&&this.validSave(s)){this.players=s.players;this.active=s.active;this.phase=s.phase;this.handoff=this.phase==='setup';this.winnerOpen=this.phase==='finished';if(s.version===1&&this.phase==='battle'&&s.result){this.active=1-this.active;this.save();}}}}catch{localStorage.removeItem('ship-fighter-v1');}}
  validSave(s:any){return [0,1].includes(s.active)&&['setup','battle','finished'].includes(s.phase)&&Array.isArray(s.players)&&s.players.length===2&&s.players.every((p:any)=>Array.isArray(p.ships)&&p.ships.length===5&&p.ships.every((ship:Ship,i:number)=>ship.id===i&&ship.size===[5,4,3,3,2][i]&&Number.isInteger(ship.row)&&Number.isInteger(ship.col)&&typeof ship.vertical==='boolean'&&valid(ship,p.ships))&&p.shots&&typeof p.shots==='object'&&!Array.isArray(p.shots)&&Object.entries(p.shots).every(([k,v])=>Number.isInteger(+k)&&+k>=0&&+k<100&&typeof v==='boolean'));}
@@ -48,15 +48,15 @@ export class App {
  endDrag(e:PointerEvent){if(!this.drag)return;this.move(e);const d=this.drag;if(d.moved){this.suppress=true;if(d.target!==null){const s=this.players[this.active].ships[d.id];this.place({...s,row:Math.floor(d.target/10)-(s.vertical?d.offset:0),col:d.target%10-(s.vertical?0:d.offset)});}else this.notice='Drop the ship inside the ocean grid.';setTimeout(()=>{this.suppress=false;},0);}this.cancelDrag();}
  cancelDrag(){this.drag=null;this.ghost=[];}
  shuffle(){this.players[this.active].ships=randomFleet();this.selectedShip=null;this.notice='';this.save();}
- ready(){this.selectedShip=null;this.notice='';if(this.active===0)this.active=1;else{this.active=0;this.phase='battle';}this.handoff=this.phase==='setup';this.save();}
- reveal(){this.handoff=false;if(this.phase==='finished')this.winnerOpen=true;}
+ ready(){void this.sound.unlock();this.selectedShip=null;this.notice='';if(this.active===0)this.active=1;else{this.active=0;this.phase='battle';}this.handoff=this.phase==='setup';this.save();}
+ reveal(){void this.sound.unlock();this.handoff=false;if(this.phase==='finished')this.winnerOpen=true;}
  fire(){
   if(this.selected===null||this.phase!=='battle'||this.handoff||this.restart)return;
   const player=this.active,cell=this.selected;
   const r=shoot(this.players[player],this.players[1-player],cell);if(!r)return;
   this.lastShot={player,cell};this.selected=null;
   this.result='Player '+(player+1)+(r.hit?' hit!':' missed.');
-  if(r.hit)this.sound.play();
+  this.sound.play(r.hit);
   if(r.won){this.phase='finished';this.winnerOpen=true;}else this.active=1-player;
   this.save();
  }

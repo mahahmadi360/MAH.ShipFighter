@@ -1,11 +1,14 @@
 {
   "name": "mah-ship-fighter",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "private": true,
   "scripts": {
     "start": "ng serve --host 0.0.0.0",
     "build": "ng build",
-    "test": "node --experimental-strip-types --test tests/engine.test.ts"
+    "test": "node --experimental-strip-types --test tests/engine.test.ts",
+    "audio:embed": "node scripts/embed-audio.mjs",
+    "prebuild": "npm run audio:embed",
+    "prestart": "npm run audio:embed"
   },
   "dependencies": {
     "@angular/common": "^21.2.8",
