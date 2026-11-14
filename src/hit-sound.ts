@@ -4,11 +4,11 @@ export class HitSound {
  private nextVoice=0;
  constructor(){
   try{
-   const url=new URL('audio/explosion-1.2.1.mp3',document.baseURI).href;
+   const url=new URL('audio/explosion-1.2.2.mp3',document.baseURI).href;
    this.voices=Array.from({length:4},()=>{
     const audio=new Audio(url);
     audio.preload='auto';
-    audio.volume=.55;
+    audio.volume=.72;
     audio.load();
     return audio;
    });
