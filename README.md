@@ -44,7 +44,7 @@ Both grids stay visible and show each player’s shots at the opposing fleet. Th
 
 ### 3. Sink the whole fleet
 
-The first player to hit **all 17 cells** of the opposing fleet wins. Choose **View results** to reveal both opposing fleets on the targeting grids, including the cells the losing player never found. Want a rematch? Press **New Game** and confirm the restart.
+The first player to hit **all 17 cells** of the opposing fleet wins. Choose **View results** to reveal both opposing fleets on the targeting grids, including the cells the losing player never found. Each complete hull keeps its outline and length label; pale markings inside the hull show which individual cells were hit. Want a rematch? Press **New Game** and confirm the restart.
 
 ## Play it your way
 
