@@ -2,6 +2,7 @@ import {SwUpdate,provideServiceWorker} from '@angular/service-worker';
 import {Subscription} from 'rxjs';
 import {Component,ChangeDetectorRef,isDevMode} from '@angular/core';
 import {ShotIcon} from './shot-icon';
+import {playerLabel} from './player-names';
 import {HitSound} from './hit-sound';
 import {bootstrapApplication} from '@angular/platform-browser';
 import {version as appVersion} from '../package.json';
@@ -11,27 +12,31 @@ import {cells,fleet,valid,shoot,randomFleet,Ship,Player,heading,bounds,positions
 <header><a class="brand" href="./">SHIP<span>FIGHTER</span><small class="app-version" aria-label="Application version">{{version}}</small></a><div class="header-actions">@if(updateAvailable){<button class="sound-toggle" aria-label="Load latest version" title="Update available" (click)="loadUpdate()">↻</button>}@if(installPrompt){<button class="sound-toggle" aria-label="Install Ship Fighter" title="Install app" (click)="installApp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button>}<button class="sound-toggle" (click)="sound.toggle()" [attr.aria-label]="sound.enabled?'Mute sound':'Enable sound'" [attr.aria-pressed]="sound.enabled" [attr.data-audio-status]="sound.status" [title]="sound.error||(sound.enabled?'Sound on':'Sound off')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/>@if(sound.enabled){<path d="M16 8c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/>}@else{<path d="m17 9 5 6m0-6-5 6"/>}</svg></button><button class="reset" aria-label="New Game" title="New Game" (click)="restart=true">↻ <span class="reset-label">New Game</span></button></div></header>
 <main (pointerdown)="sound.unlock()" [class.battle]="phase!=='setup'" [attr.inert]="handoff||restart||winnerOpen?'':null">
 @for(p of (phase==='setup'?[active]:[0,1]);track p){
-<section class="playfield" [class.player-two]="p===1" [class.current]="p===active" [class.passive]="p!==active" [style.grid-row]="phase==='setup'?1:p===0?1:3" [attr.aria-label]="'Player '+(p+1)">
-<div class="board" role="group" [attr.aria-label]="'Player '+(p+1)+(phase==='setup'?' fleet placement':' targeting grid')" (pointermove)="move($event)" (pointerup)="endDrag($event)" (pointercancel)="cancelDrag()">
-@for(cell of grid;track cell){<button class="cell" [class.overlap]="phase==='setup'&&overlap(cell)" [class.ship-cell]="phase==='setup'&&occupant(cell)!==undefined" [class.hit]="phase!=='setup'&&players[p].shots[cell]===true" [class.miss]="phase!=='setup'&&players[p].shots[cell]===false" [class.target]="p===active&&selected===cell" [class.last-shot]="lastShot?.player===p&&lastShot?.cell===cell" [class.ghost]="phase==='setup'&&ghost.includes(cell)" [class.invalid]="ghost.includes(cell)&&!ghostValid" [disabled]="phase==='finished'||p!==active||(phase!=='setup'&&hasShot(p,cell))" [attr.aria-label]="coordinate(cell)+(phase==='setup'&&occupant(cell)!==undefined?' ship':phase!=='setup'&&players[p].shots[cell]===true?' hit':phase!=='setup'&&players[p].shots[cell]===false?' miss':'')" (pointerdown)="begin($event,cell)" (click)="choose(cell,p)">
+<section class="playfield" [class.player-two]="p===1" [class.current]="p===active" [class.passive]="p!==active" [style.grid-row]="phase==='setup'?1:p===0?1:3" [attr.aria-label]="name(p)">
+<div class="player-name"><bdi>{{name(p)}}</bdi>@if(phase==='finished'){<span> → <bdi>{{name(1-p)}}</bdi></span>}</div><div class="board" role="group" [attr.aria-label]="name(p)+(phase==='setup'?' fleet placement':' targeting grid')" (pointermove)="move($event)" (pointerup)="endDrag($event)" (pointercancel)="cancelDrag()">
+@for(cell of grid;track cell){<button class="cell" [class.overlap]="phase==='setup'&&overlap(cell)" [class.ship-cell]="phase==='setup'&&occupant(cell)!==undefined" [class.hit]="phase!=='setup'&&players[p].shots[cell]===true" [class.miss]="phase!=='setup'&&players[p].shots[cell]===false" [class.target]="p===active&&selected===cell" [class.last-shot]="lastShot?.player===p&&lastShot?.cell===cell" [class.ghost]="phase==='setup'&&ghost.includes(cell)" [class.invalid]="ghost.includes(cell)&&!ghostValid" [disabled]="phase==='finished'||p!==active||(phase!=='setup'&&hasShot(p,cell))" [attr.aria-label]="coordinate(cell)+(phase==='finished'&&revealedShip(p,cell)?' revealed ship':'')+(phase==='setup'&&occupant(cell)!==undefined?' ship':phase!=='setup'&&players[p].shots[cell]===true?' hit':phase!=='setup'&&players[p].shots[cell]===false?' miss':'')" (pointerdown)="begin($event,cell)" (click)="choose(cell,p)">
 @if(phase!=='setup'&&hasShot(p,cell)){<shot-icon [kind]="players[p].shots[cell]?'hit':'miss'"/>}@else if(p===active&&selected===cell){<svg class="target-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 2v6m0 8v6M2 12h6m8 0h6"/></svg>}
 </button>}
-@if(phase==='setup'){@for(ship of players[active].ships;track ship.id){<div class="vessel" [class.vertical]="ship.vertical" [class.facing-left]="direction(ship)===2" [class.facing-up]="direction(ship)===3" [class.invalid-ship]="!shipValid(ship)" [class.selected-ship]="selectedShip===ship.id" [style.left.%]="shipBounds(ship).col*10+.5" [style.top.%]="shipBounds(ship).row*10+.5" [style.width.%]="(ship.vertical?1:ship.size)*10-1" [style.height.%]="(ship.vertical?ship.size:1)*10-1"><span></span><b>{{ship.size}}</b></div>}}
+@if(phase!=='battle'){@for(ship of displayShips(p);track ship.id){<div class="vessel" [class.revealed]="phase==='finished'" [class.vertical]="ship.vertical" [class.facing-left]="direction(ship)===2" [class.facing-up]="direction(ship)===3" [class.invalid-ship]="phase==='setup'&&!shipValid(ship)" [class.selected-ship]="phase==='setup'&&selectedShip===ship.id" [style.left.%]="shipBounds(ship).col*10+.5" [style.top.%]="shipBounds(ship).row*10+.5" [style.width.%]="(ship.vertical?1:ship.size)*10-1" [style.height.%]="(ship.vertical?ship.size:1)*10-1"><span></span><b>{{ship.size}}</b></div>}}
 </div></section>}
 <div class="controls">
 @if(phase==='setup'){<button class="secondary" (click)="shuffle()" aria-label="Randomize fleet">⇄</button><button class="primary" [disabled]="!canConfirmFleet" (click)="ready()">Confirm fleet</button>}
-@else{<button class="primary" [disabled]="selected===null||phase==='finished'" (click)="fire()">{{phase==='finished'?'Player '+(active+1)+' wins!':'Confirm shot'}}</button>}
+@else{<button class="primary" [disabled]="selected===null||phase==='finished'" (click)="fire()">{{phase==='finished'?name(active)+' won!':'Confirm shot'}}</button>}
 </div>
-<div class="legend">@if(phase==='setup'&&!canConfirmFleet){<span class="placement-warning" role="status">Fix overlaps and keep ships inside the grid</span>}@else{<span><i class="legend-ship"></i>{{phase==='setup'?'Ship':'Uncharted'}}</span><span><shot-icon kind="hit"/>Hit</span><span><shot-icon kind="miss"/>Miss</span>}</div>
+<div class="legend">@if(phase==='setup'&&!canConfirmFleet){<span class="placement-warning" role="status">Fix overlaps and keep ships inside the grid</span>}@else{<span><i class="legend-ship"></i>{{phase==='finished'?'Ships revealed':phase==='setup'?'Ship':'Uncharted'}}</span><span><shot-icon kind="hit"/>Hit</span><span><shot-icon kind="miss"/>Miss</span>}</div>
 <span class="sr-only" aria-live="polite">{{result}}</span>@if(sound.error){<div class="audio-error" role="status">{{sound.error}}</div>}
 @if(notice&&phase==='setup'){<div class="notice" role="status" (click)="notice=''">{{notice}}</div>}
 </main>
-@if(handoff){<div class="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="handoff-title"><h2 id="handoff-title">Player {{active+1}}</h2><button class="primary" (click)="reveal()">{{phase==='setup'?'Place ships':'Ready to fire'}}</button></section></div>}
+@if(handoff){<div class="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="handoff-title"><form (submit)="$event.preventDefault();reveal()"><label id="handoff-title" class="name-label" for="player-name">Player {{active+1}}</label><input id="player-name" class="name-input" type="text" dir="auto" maxlength="24" autocomplete="off" [value]="nameDraft" [placeholder]="'Player '+(active+1)" (input)="nameDraft=$any($event.target).value" aria-label="Player name"><button class="primary" type="submit">{{phase==='setup'?'Place ships':'Ready to fire'}}</button></form></section></div>}
 @if(restart){<div class="overlay"><section class="modal" role="alertdialog" aria-modal="true" aria-labelledby="restart-title"><h2 id="restart-title">New game?</h2><button class="primary" (click)="newGame()">Start new game</button><button class="secondary" (click)="restart=false">Cancel</button></section></div>}
-@if(phase==='finished'&&winnerOpen&&!handoff){<div class="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="winner-title"><h2 id="winner-title">Player {{active+1}} wins!</h2><button class="primary" (click)="newGame()">Play again</button><button class="secondary" (click)="winnerOpen=false">View results</button></section></div>}
+@if(phase==='finished'&&winnerOpen&&!handoff){<div class="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="winner-title"><h2 id="winner-title"><bdi>{{name(active)}}</bdi> won!</h2><button class="primary" (click)="newGame()">Play again</button><button class="secondary" (click)="winnerOpen=false">View results</button></section></div>}
 </div>`})
 export class App {
  version=appVersion;
+ playerNames=['',''];nameDraft='';
+ name(index:number){return playerLabel(this.playerNames[index],index);}
+ displayShips(player:number){return this.phase==='setup'?this.players[this.active].ships:this.phase==='finished'?this.players[1-player].ships:[];}
+ revealedShip(player:number,cell:number){return this.phase==='finished'&&this.players[1-player].ships.some(ship=>cells(ship).includes(cell));}
  installPrompt:(Event & {prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>})|null=null;
  updateAvailable=false;
  private updateSubscription?:Subscription;
@@ -44,7 +49,7 @@ export class App {
  installApp(){const prompt=this.installPrompt;if(!prompt)return;this.installPrompt=null;void prompt.prompt().then(()=>prompt.userChoice).catch(()=>{}).finally(()=>this.cd.markForCheck());}
  loadUpdate(){window.location.reload();}
  letters='ABCDEFGHIJ'.split('');numbers=Array.from({length:10},(_,i)=>i);grid=Array.from({length:100},(_,i)=>i);
- players:Player[]=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];active=0;phase:'setup'|'battle'|'finished'='setup';handoff=false;restart=false;winnerOpen=false;selected:number|null=null;selectedShip:number|null=null;result='';notice='';ghost:number[]=[];ghostValid=true;
+ players:Player[]=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];active=0;phase:'setup'|'battle'|'finished'='setup';handoff=true;restart=false;winnerOpen=false;selected:number|null=null;selectedShip:number|null=null;result='';notice='';ghost:number[]=[];ghostValid=true;
  lastShot:{player:number;cell:number}|null=null;
  sound=new HitSound(()=>this.cd.markForCheck());
  drag:{id:number;x:number;y:number;offset:number;moved:boolean;candidate:Ship|null}|null=null;suppress=false;
@@ -52,13 +57,13 @@ export class App {
  this.syncViewport();window.addEventListener('resize',this.syncViewport);window.visualViewport?.addEventListener('resize',this.syncViewport);
  window.addEventListener('beforeinstallprompt',this.onInstall);window.addEventListener('appinstalled',this.onInstalled);
  if(updates.isEnabled){this.updateSubscription=updates.versionUpdates.subscribe(event=>{if(event.type==='VERSION_READY'){this.updateAvailable=true;this.cd.markForCheck();}});void updates.checkForUpdate().catch(()=>{});}
- try{const saved=localStorage.getItem('ship-fighter-v1');if(saved){const s=JSON.parse(saved);if([1,2,3].includes(s.version)&&this.validSave(s)){this.players=s.players.map((p:Player)=>({...p,ships:p.ships.map(ship=>({...ship,direction:heading(ship)}))}));this.active=s.active;this.phase=s.phase;this.handoff=this.phase==='setup';this.winnerOpen=this.phase==='finished';if(s.version===1&&this.phase==='battle'&&s.result){this.active=1-this.active;this.save();}}}}catch{localStorage.removeItem('ship-fighter-v1');}}
+ try{const saved=localStorage.getItem('ship-fighter-v1');if(saved){const s=JSON.parse(saved);if([1,2,3,4].includes(s.version)&&this.validSave(s)){this.players=s.players.map((p:Player)=>({...p,ships:p.ships.map(ship=>({...ship,direction:heading(ship)}))}));this.active=s.active;this.phase=s.phase;this.playerNames=[0,1].map(i=>typeof s.playerNames?.[i]==='string'?playerLabel(s.playerNames[i],i):'');this.handoff=this.phase==='setup';this.winnerOpen=this.phase==='finished';if(s.version===1&&this.phase==='battle'&&s.result){this.active=1-this.active;this.save();}}}}catch{localStorage.removeItem('ship-fighter-v1');}this.nameDraft=this.playerNames[this.active];}
  validSave(s:any){
   return [0,1].includes(s.active)&&['setup','battle','finished'].includes(s.phase)&&Array.isArray(s.players)&&s.players.length===2&&s.players.every((p:any,player:number)=>
    Array.isArray(p.ships)&&p.ships.length===5&&p.ships.every((ship:Ship,i:number)=>ship.id===i&&ship.size===[5,4,3,3,2][i]&&Number.isInteger(ship.row)&&Number.isInteger(ship.col)&&typeof ship.vertical==='boolean'&&(ship.direction===undefined||(Number.isInteger(ship.direction)&&ship.direction>=0&&ship.direction<=3&&ship.vertical===(ship.direction%2===1)))&&canPlace(ship)&&(s.phase==='setup'&&player===s.active||valid(ship,p.ships)))&&
    p.shots&&typeof p.shots==='object'&&!Array.isArray(p.shots)&&Object.entries(p.shots).every(([k,v])=>Number.isInteger(+k)&&+k>=0&&+k<100&&typeof v==='boolean'));
  }
- save(){try{localStorage.setItem('ship-fighter-v1',JSON.stringify({version:3,players:this.players,active:this.active,phase:this.phase}));}catch{this.notice='Browser storage is unavailable. Keep this tab open to finish the game.';}}
+ save(){try{localStorage.setItem('ship-fighter-v1',JSON.stringify({version:4,players:this.players,active:this.active,phase:this.phase,playerNames:this.playerNames}));}catch{this.notice='Browser storage is unavailable. Keep this tab open to finish the game.';}}
  coordinate(c:number){return this.letters[c%10]+(Math.floor(c/10)+1);}
  occupant(c:number){const ships=this.players[this.active].ships;const selected=ships.find(s=>s.id===this.selectedShip&&cells(s).includes(c));return (selected??[...ships].reverse().find(s=>cells(s).includes(c)))?.id;}
  get canConfirmFleet(){return fleetValid(this.players[this.active].ships);}
@@ -88,19 +93,19 @@ export class App {
  }
  cancelDrag(){this.drag=null;this.ghost=[];}
  shuffle(){this.players[this.active].ships=randomFleet();this.selectedShip=null;this.notice='';this.save();}
- ready(){if(!this.canConfirmFleet)return;void this.sound.unlock();this.selectedShip=null;this.notice='';if(this.active===0)this.active=1;else{this.active=0;this.phase='battle';}this.handoff=this.phase==='setup';this.save();}
- reveal(){void this.sound.unlock();this.handoff=false;if(this.phase==='finished')this.winnerOpen=true;}
+ ready(){if(!this.canConfirmFleet)return;void this.sound.unlock();this.selectedShip=null;this.notice='';if(this.active===0)this.active=1;else{this.active=0;this.phase='battle';}this.handoff=this.phase==='setup';this.nameDraft=this.playerNames[this.active];this.save();}
+ reveal(){void this.sound.unlock();this.playerNames[this.active]=playerLabel(this.nameDraft,this.active);this.save();this.handoff=false;if(this.phase==='finished')this.winnerOpen=true;}
  fire(){
   if(this.selected===null||this.phase!=='battle'||this.handoff||this.restart)return;
   const player=this.active,cell=this.selected;
   const r=shoot(this.players[player],this.players[1-player],cell);if(!r)return;
   this.lastShot={player,cell};this.selected=null;
-  this.result='Player '+(player+1)+(r.hit?' hit!':' missed.');
+  this.result=this.name(player)+(r.hit?' hit!':' missed.');
   this.sound.play(r.hit);
   if(r.won){this.phase='finished';this.winnerOpen=true;}else this.active=1-player;
   this.save();
  }
  ngOnDestroy(){window.removeEventListener('resize',this.syncViewport);window.visualViewport?.removeEventListener('resize',this.syncViewport);this.sound.close();this.updateSubscription?.unsubscribe();window.removeEventListener('beforeinstallprompt',this.onInstall);window.removeEventListener('appinstalled',this.onInstalled);}
- newGame(){this.lastShot=null;this.players=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];this.active=0;this.phase='setup';this.handoff=true;this.restart=false;this.winnerOpen=false;this.selected=null;this.selectedShip=null;this.result='';this.notice='';this.cancelDrag();this.save();}
+ newGame(){this.nameDraft=this.playerNames[0];this.lastShot=null;this.players=[{ships:fleet(),shots:{}},{ships:fleet(),shots:{}}];this.active=0;this.phase='setup';this.handoff=true;this.restart=false;this.winnerOpen=false;this.selected=null;this.selectedShip=null;this.result='';this.notice='';this.cancelDrag();this.save();}
 }
 bootstrapApplication(App,{providers:[provideServiceWorker('ngsw-worker.js',{enabled:!isDevMode(),registrationStrategy:'registerImmediately'})]}).catch(console.error);

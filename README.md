@@ -16,6 +16,8 @@ If you enjoy playing it, it has done its job. 🙂
 
 ### 1. Place your ships
 
+Enter a name on each player’s ready screen (or leave it blank to use Player 1 / Player 2). Names appear on the boards and in the winner announcement.
+
 Player 1 arranges their fleet on a **10 × 10** grid, then presses **Confirm fleet**. Pass the device to Player 2, who does the same. Keep your setup hidden from the other player!
 
 Each player has **five ships**, covering **17 cells** altogether:
@@ -42,7 +44,7 @@ Both grids stay visible and show each player’s shots at the opposing fleet. Th
 
 ### 3. Sink the whole fleet
 
-The first player to hit **all 17 cells** of the opposing fleet wins. Want a rematch? Press **New Game** and confirm the restart.
+The first player to hit **all 17 cells** of the opposing fleet wins. Choose **View results** to reveal both opposing fleets on the targeting grids, including the cells the losing player never found. Want a rematch? Press **New Game** and confirm the restart.
 
 ## Play it your way
 
